@@ -1,123 +1,112 @@
-#include "matrix.h"
-#include "matrix_operations.h"
-#include "helpers.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include "core/matrix.h"
+#include "math/matrix_operations.h"
+#include "core/helpers.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 
-int checkDimensions(Matrix2D matrixA, Matrix2D matrixB)
+int matricesHaveSameDimensions(Matrix *matrixA, Matrix *matrixB)
 {
-    if (matrixA.rows == matrixB.rows && matrixA.cols == matrixB.cols)
-        return 1;
-    return 0;
+    return matrixA->rows == matrixB->rows && matrixA->cols == matrixB->cols;
 }
 
-Matrix2D transposeMatrix(Matrix2D matrix)
+Matrix *transposeMatrix(Matrix *matrix)
 {
-    if (!matrix.data)
-        die("Isn't possible to transpose a empty matrix.");
+    Matrix *tMatrix = createMatrix(matrix->cols, matrix->rows);
 
-    Matrix2D tMatrix = newMatrix(matrix.cols, matrix.rows);
-
-    for (int i = 0; i < matrix.rows; i++)
+    for (int i = 0; i < matrix->rows; i++)
     {
-        for (int j = 0; j < matrix.cols; j++)
+        for (int j = 0; j < matrix->cols; j++)
         {
-            tMatrix.data[j * matrix.cols + i] = matrix.data[i * matrix.cols + j];
+            setMatrixValue(getMatrixValue(matrix, i, j), tMatrix, j, i);
         }
     }
 
     return tMatrix;
 }
 
-Matrix2D multiplyMatrix(Matrix2D matrixA, Matrix2D matrixB)
+Matrix *multiplyMatrices(Matrix *matrixA, Matrix *matrixB)
 {
-    if (matrixA.cols != matrixB.rows)
-        die("The cols in matrix A, don't equal of rows in matrix B");
+    Matrix *dotMatrix = createMatrix(matrixA->rows, matrixB->cols);
 
-    Matrix2D dotMatrix = newMatrix(matrixA.rows, matrixB.cols);
-
-    for (int i = 0; i < matrixA.rows; i++)
+    for (int i = 0; i < matrixA->rows; i++)
     {
-        for (int j = 0; j < matrixB.cols; j++)
+        for (int j = 0; j < matrixB->cols; j++)
         {
-            dotMatrix.data[i * matrixB.cols + j] = 0.0f;
-            for (int k = 0; k < matrixA.cols; k++)
+            float sum = 0.0f;
+            for (int k = 0; k < matrixA->cols; k++)
             {
-                dotMatrix.data[i * matrixB.cols + j] += 
-                getFromMatrix(matrixA, i, k) * 
-                getFromMatrix(matrixB, k, j);
+                sum +=
+                    getMatrixValue(matrixA, i, k) *
+                    getMatrixValue(matrixB, k, j);
             }
+            setMatrixValue(sum, dotMatrix, i, j);
         }
     }
 
     return dotMatrix;
 }
 
-Matrix2D multiplyMatrixScalar(Matrix2D matrix, float scalar)
+Matrix *multiplyMatrixByScalar(Matrix *matrix, float scalar)
 {
-    Matrix2D scalarMatrix = newMatrix(matrix.rows, matrix.cols);
+    Matrix *scalarMatrix = createMatrix(matrix->rows, matrix->cols);
 
-    for (int i = 0; i < matrix.rows; i++)
+    for (int i = 0; i < matrix->rows; i++)
     {
-        for (int j = 0; j < matrix.cols; j++)
+        for (int j = 0; j < matrix->cols; j++)
         {
-            scalarMatrix.data[i * matrix.cols + j] = getFromMatrix(matrix, i, j) * scalar;
+            scalarMatrix->data[i * matrix->cols + j] = getMatrixValue(matrix, i, j) * scalar;
         }
     }
 
     return scalarMatrix;
 }
 
-Matrix2D sumMatrix(Matrix2D matrixA, Matrix2D matrixB)
+Matrix *addMatrices(Matrix *matrixA, Matrix *matrixB)
 {
-    if (!checkDimensions(matrixA, matrixB))
-        die("sumMatrix: The matrices do not have equivalent dimensions.");
+    Matrix *result = createMatrix(matrixA->rows, matrixA->cols);
 
-    Matrix2D sumMatrix = newMatrix(matrixA.rows, matrixA.cols);
-
-    for (int i = 0; i < matrixA.rows; i++)
+    for (int i = 0; i < matrixA->rows; i++)
     {
-        for (int j = 0; j < matrixA.cols; j++)
+        for (int j = 0; j < matrixA->cols; j++)
         {
-            sumMatrix.data[i * matrixB.cols + j] =
-            getFromMatrix(matrixA, i, j) +
-            getFromMatrix(matrixB, i, j);
+            result->data[i * matrixA->cols + j] =
+                getMatrixValue(matrixA, i, j) +
+                getMatrixValue(matrixB, i, j);
         }
     }
 
-    return sumMatrix;
+    return result;
 }
 
-Matrix2D subMatrix(Matrix2D matrixA, Matrix2D matrixB)
+Matrix *subtractMatrices(Matrix *matrixA, Matrix *matrixB)
 {
-    if (!checkDimensions(matrixA, matrixB))
-        die("The matrices do not have equivalent dimensions.");
+    Matrix *result = createMatrix(matrixA->rows, matrixA->cols);
 
-    Matrix2D subMatrix = newMatrix(matrixA.rows, matrixA.cols);
-
-    for (int i = 0; i < matrixA.rows; i++)
+    for (int i = 0; i < matrixA->rows; i++)
     {
-        for (int j = 0; j < matrixA.cols; j++)
+        for (int j = 0; j < matrixA->cols; j++)
         {
-            subMatrix.data[i * matrixB.cols + j] =
-                getFromMatrix(matrixA, i, j) -
-                getFromMatrix(matrixB, i, j);
+            result->data[i * matrixA->cols + j] =
+                getMatrixValue(matrixA, i, j) -
+                getMatrixValue(matrixB, i, j);
         }
     }
 
-    return subMatrix;
+    return result;
 }
 
-Matrix2D applyFunc(float (*func)(float), Matrix2D matrix)
+Matrix *applyFunctionToMatrix(float (*func)(float), Matrix *matrix)
 {
-    Matrix2D appliedMatrix = newMatrix(matrix.rows, matrix.cols);
+    Matrix *appliedMatrix = createMatrix(matrix->rows, matrix->cols);
 
-    for (int i = 0; i < matrix.rows; i++)
+    for (int i = 0; i < matrix->rows; i++)
     {
-        for (int j = 0; j < matrix.cols; j++)
+        for (int j = 0; j < matrix->cols; j++)
         {
-            float value = getFromMatrix(matrix, i, j);
-            addToMatrix((*func)(value), appliedMatrix, i, j);
+            float value = getMatrixValue(matrix, i, j);
+            setMatrixValue((*func)(value), appliedMatrix, i, j);
         }
     }
 
