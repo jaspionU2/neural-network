@@ -33,13 +33,24 @@ static void printHeader(const char *title)
 static void printUsage(const char *programName)
 {
     printf("Uso:\n");
-    printf("  %s [dataset] [train_size] [batch_size] [epochs] [learning_rate]\n", programName);
-    printf("  %s [dataset] [test_size] [batch_size]\n", programName);
-    printf("  %s [dataset] [train_size] [test_size] [batch_size] [epochs] [learning_rate]\n", programName);
+    printf(" -modo treino- %s [dataset] [train_size] [batch_size] [epochs] [learning_rate]\n", programName);
+    printf(" -modo teste- %s [dataset] [test_size] [batch_size]\n", programName);
+    printf(" -modo treino/teste- %s [dataset] [train_size] [test_size] [batch_size] [epochs] [learning_rate]\n", programName);
+    printf("\nDescricao dos argumentos:\n");
+    printf("  dataset      = caminho do arquivo CSV do conjunto de dados\n");
+    printf("  train_size   = quantidade de imagens usadas no treinamento\n");
+    printf("  test_size    = quantidade de imagens usadas no teste\n");
+    printf("  batch_size   = numero de imagens por lote\n");
+    printf("  epochs       = numero de epocas de treinamento\n");
+    printf("  learning_rate= taxa de aprendizado da rede\n");
+    printf("\nModos de uso:\n");
+    printf("  train = treina a rede e salva os pesos em neural_net_cp.bin\n");
+    printf("  test  = carrega a rede salva e avalia a acuracia no conjunto de teste\n");
+    printf("  all   = executa treinamento seguido de teste em uma unica execucao\n");
     printf("\nExemplos:\n");
-    printf("  %s ./data/mnist_test.csv 100 5 3 0.05\n", programName);
-    printf("  %s ./data/mnist_test.csv 25 5\n", programName);
-    printf("  %s ./data/mnist_test.csv 100 25 5 3 0.05\n", programName);
+    printf("  %s train ./data/mnist_test.csv 100 5 3 0.05\n", programName);
+    printf("  %s test  ./data/mnist_test.csv 25 5\n", programName);
+    printf("  %s all   ./data/mnist_test.csv 100 25 5 3 0.05\n", programName);
 }
 
 static enum DemoMode parseMode(const char *mode)
@@ -138,7 +149,7 @@ int main(int argc, char const *argv[])
 
         char input[1];
         scanf("%1s", input);
-        if (strcasecmp(input, "y") != 0) 
+        if (strcasecmp(input, "y") != 0)
             return EXIT_SUCCESS;
     }
 
