@@ -29,14 +29,6 @@ void softmax(Matrix *output);
 Matrix *weightedSum(Matrix *inputs, Matrix *weights, Matrix *bias);
 
 /*
- * crossEntropy:
- *  - output: vetor de saídas da rede após a camada final.
- *  - idxExpectedClass: índice da classe correta esperada.
- * Retorna: perda de entropia cruzada para a classificação correta.
- */
-double crossEntropy(Matrix *output, int idxExpectedClass);
-
-/*
  * sigmoidDerivative:
  *  - preActivation: matriz com valores pós-ativação sigmóide.
  * Retorna: nova matriz contendo as derivadas sigmóides.
@@ -73,3 +65,12 @@ Matrix *hiddenDelta(Matrix *output, Matrix *nextWeights, Matrix *nextDelta);
  * Atualiza os pesos e bias da camada usando gradient descent.
  */
 void updateLayerParameters(NetworkLayer *layer, Matrix *prevInput, Matrix *delta, int batchSize, float learningRate);
+
+/*
+ * CategoricalCrossEntropy:
+ *  - output: matriz com as saídas previstas da rede.
+ *  - target: matriz com os valores esperados.
+ * Retorna: média da perda calculada sobre todos os elementos.
+ * Cálculo usado para monitorar o custo total do lote ou da rede.
+ */
+float CategoricalCrossEntropy(Matrix *output, Matrix *target);

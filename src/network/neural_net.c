@@ -7,55 +7,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <float.h>
 
 /*
  * newNetworkLayer:
- *  - n_samples: quantidade de amostras.
- *  - n_neurons: número de neurônios presentes nessa camada.
- *  - n_neuronsLast: quantidade de neurônios da camada anterior.
+ *  - batch_size: quantidade de amostras.
+ *  - neuron_count: número de neurônios presentes nessa camada.
+ *  - previous_layer_neuron_count: quantidade de neurônios da camada anterior.
  * Retorna: uma NetworkLayer inicializada com pesos, bias e saída.
  * Esse construtor cria o estado interno de uma camada para que a rede possa processar dados.
  */
-NetworkLayer newNetworkLayer(int n_samples, int n_neurons, int n_neuronsLast)
+NetworkLayer newNetworkLayer(int batch_size, int neuron_count, int previous_layer_neuron_count)
 {
-    Matrix *biases = createMatrix(1, n_neurons);
-    Matrix *weights = createMatrix(n_neuronsLast, n_neurons);
-    Matrix *output = createMatrix(n_samples, n_neurons);
+    Matrix *bias_matrix = createMatrix(1, neuron_count);
+    Matrix *weight_matrix = createMatrix(previous_layer_neuron_count, neuron_count);
+    Matrix *output_matrix = createMatrix(batch_size, neuron_count);
 
-    if (biases == NULL || biases->data == NULL ||
-        weights == NULL || weights->data == NULL ||
-        output == NULL || output->data == NULL)
+    if (bias_matrix == NULL || bias_matrix->data == NULL ||
+        weight_matrix == NULL || weight_matrix->data == NULL ||
+        output_matrix == NULL || output_matrix->data == NULL)
     {
-        if (biases != NULL)
+        if (bias_matrix != NULL)
         {
-            freeMatrixData(biases);
-            free(biases);
-            biases = NULL;
+            freeMatrixData(bias_matrix);
+            free(bias_matrix);
+            bias_matrix = NULL;
         }
-        if (weights != NULL)
+        if (weight_matrix != NULL)
         {
-            freeMatrixData(weights);
-            free(weights);
-            weights = NULL;
+            freeMatrixData(weight_matrix);
+            free(weight_matrix);
+            weight_matrix = NULL;
         }
-        if (output != NULL)
+        if (output_matrix != NULL)
         {
-            freeMatrixData(output);
-            free(output);
-            output = NULL;
+            freeMatrixData(output_matrix);
+            free(output_matrix);
+            output_matrix = NULL;
         }
 
         fatalError("Erro: Allocation fail. Don't possible to create new NetworkLayer.");
     }
 
-    fillMatrixXavier(weights, n_neuronsLast, n_neurons);
-    fillMatrixRandom(biases, 0.0f, 0.0f);
+    fillMatrixXavier(weight_matrix, previous_layer_neuron_count, neuron_count);
+    fillMatrixRandom(bias_matrix, 0.0f, 0.0f);
 
     NetworkLayer layer = {
-        .n_neurons = n_neurons,
-        .bias = biases,
-        .weights = weights,
-        .output = output};
+        .neuron_count = neuron_count,
+        .bias = bias_matrix,
+        .weights = weight_matrix,
+        .output = output_matrix};
 
     return layer;
 }
@@ -68,92 +70,89 @@ NetworkLayer newNetworkLayer(int n_samples, int n_neurons, int n_neuronsLast)
  */
 void appendLayerToNeuralNet(NeuralNetModel *net, NetworkLayer layer)
 {
-    NetworkLayer *temp = realloc(net->layers, (net->layerCount + 1) * sizeof(NetworkLayer));
+    NetworkLayer *temp = realloc(net->layers, (net->layer_count + 1) * sizeof(NetworkLayer));
 
     if (!temp)
         fatalError("Error: Allocation fail. It was not possible to append an layer to the net.");
 
     net->layers = temp;
-
-    net->layers[net->layerCount] = layer;
-
-    net->layerCount++;
+    net->layers[net->layer_count] = layer;
+    net->layer_count++;
 }
 
 /*
  * newNeuralNet:
- *  - n_samples: quantidade de amostras.
- *  - n_Layers: número de camadas da rede, incluindo a saída.
- *  - n_neurons: número de neurônios das camadas intermediárias.
- *  - inputNeurons: número de neurônios da camada de entrada.
- *  - outputNeurons: número de neurônios da camada de saída.
+ *  - batch_size: quantidade de amostras.
+ *  - layer_count: número de camadas da rede, incluindo a saída.
+ *  - hidden_layer_neuron_count: número de neurônios das camadas intermediárias.
+ *  - input_neuron_count: número de neurônios da camada de entrada.
+ *  - output_neuron_count: número de neurônios da camada de saída.
  * Retorna: um NeuralNetModel com as camadas inicializadas e prontas para treinamento.
  * Essa função monta a estrutura da arquitetura da rede neural.
  */
-NeuralNetModel newNeuralNet(int n_samples, int n_Layers, int n_neurons, int inputNeurons, int outputNeurons)
+NeuralNetModel newNeuralNet(int batch_size, int layer_count, int hidden_layer_neuron_count, int input_neuron_count, int output_neuron_count)
 {
-    NeuralNetModel neuralNet = {.layerCount = 0, .layers = NULL};
+    NeuralNetModel neural_net = {.layer_count = 0, .layers = NULL};
+    int previous_layer_neuron_count = input_neuron_count;
 
-    int n_lastLayer = inputNeurons;
-
-    for (int i = 0; i < n_Layers; i++)
+    for (int i = 0; i < layer_count; i++)
     {
-        NetworkLayer currentLayer;
+        NetworkLayer current_layer;
 
-        if (i == n_Layers - 1)
+        if (i == layer_count - 1)
         {
-            currentLayer = newNetworkLayer(n_samples, outputNeurons, n_lastLayer);
+            current_layer = newNetworkLayer(batch_size, output_neuron_count, previous_layer_neuron_count);
         }
         else
         {
-            currentLayer = newNetworkLayer(n_samples, n_neurons, n_lastLayer);
+            current_layer = newNetworkLayer(batch_size, hidden_layer_neuron_count, previous_layer_neuron_count);
         }
 
-        appendLayerToNeuralNet(&neuralNet, currentLayer);
-
-        n_lastLayer = neuralNet.layers[i].n_neurons;
+        appendLayerToNeuralNet(&neural_net, current_layer);
+        previous_layer_neuron_count = neural_net.layers[i].neuron_count;
     }
 
-    return neuralNet;
+    return neural_net;
 }
+
+
 
 void propagateForward(Matrix *samples, NeuralNetModel *net)
 {
     if (!samples || !samples->data)
         fatalError("Error: Passed a invalid sample as argument");
 
-    if (!net || !net->layers || net->layerCount <= 0)
+    if (!net || !net->layers || net->layer_count <= 0)
         fatalError("Error: Passed a invalid network as argument");
 
-    Matrix *currentInput = samples;
+    Matrix *current_input = samples;
 
-    for (int i = 0; i < net->layerCount; i++)
+    for (int i = 0; i < net->layer_count; i++)
     {
         NetworkLayer *layer = &net->layers[i];
+        Matrix *activation = weightedSum(current_input, layer->weights, layer->bias);
 
-        Matrix *z = weightedSum(currentInput, layer->weights, layer->bias);
-
-        if (i == net->layerCount - 1)
+        if (i == net->layer_count - 1)
         {
-            softmax(z);
+            softmax(activation);
         }
         else
         {
-            sigmoid(z);
+            sigmoid(activation);
         }
 
-        memcpy(layer->output->data, z->data, z->rows * z->cols * sizeof(float));
+        memcpy(layer->output->data, activation->data, activation->rows * activation->cols * sizeof(float));
 
-        freeMatrixData(z);
-        free(z);
+        freeMatrixData(activation);
+        free(activation);
 
-        currentInput = net->layers[i].output;
+        current_input = net->layers[i].output;
     }
 }
 
-void propagateBackward(NeuralNetModel *net, Matrix *samples, Matrix *labels, float learningRate)
+void propagateBackward(NeuralNetModel *net, Matrix *samples, Matrix *labels, float learning_rate)
 {
-    if (!net || !net->layers || net->layerCount <= 0)
+    if (!net || !net->layers || net->layer_count <= 0)
         fatalError("Error: Passed a invalid network as argument");
 
     if (!samples || !samples->data)
@@ -162,155 +161,234 @@ void propagateBackward(NeuralNetModel *net, Matrix *samples, Matrix *labels, flo
     if (!labels || !labels->data)
         fatalError("Error: Passed a invalid label as argument");
 
-    int batchSize = samples->rows;
-    Matrix *deltas[net->layerCount];
+    int batch_size = samples->rows;
+    Matrix *deltas[net->layer_count];
 
-    for (int i = net->layerCount - 1; i >= 0; i--)
+    for (int i = net->layer_count - 1; i >= 0; i--)
     {
         NetworkLayer *layer = &net->layers[i];
 
-        if (i == net->layerCount - 1)
+        if (i == net->layer_count - 1)
         {
             deltas[i] = outputDelta(layer->output, labels);
         }
         else
         {
-            NetworkLayer *nextLayer = &net->layers[i + 1];
-            deltas[i] = hiddenDelta(layer->output, nextLayer->weights, deltas[i + 1]);
+            NetworkLayer *next_layer = &net->layers[i + 1];
+            deltas[i] = hiddenDelta(layer->output, next_layer->weights, deltas[i + 1]);
         }
     }
 
-    for (int i = 0; i < net->layerCount; i++)
+    for (int i = 0; i < net->layer_count; i++)
     {
-        Matrix *prevInput = (i == 0) ? samples : net->layers[i - 1].output;
-
-        updateLayerParameters(&net->layers[i], prevInput, deltas[i], batchSize, learningRate);
+        Matrix *previous_input = (i == 0) ? samples : net->layers[i - 1].output;
+        updateLayerParameters(&net->layers[i], previous_input, deltas[i], batch_size, learning_rate);
 
         freeMatrixData(deltas[i]);
         free(deltas[i]);
     }
 }
 
+static int predictClassFromOutput(Matrix *output, int row, float *confidence)
+{
+    int predicted_class = 0;
+    float max_probability = output->data[idxMatrix(row, 0, output->cols)];
+
+    for (int class_index = 1; class_index < output->cols; class_index++)
+    {
+        float probability = output->data[idxMatrix(row, class_index, output->cols)];
+        if (probability > max_probability)
+        {
+            max_probability = probability;
+            predicted_class = class_index;
+        }
+    }
+
+    if (confidence != NULL)
+        *confidence = max_probability;
+
+    return predicted_class;
+}
+
+static int evaluateBatch(NeuralNetModel *net,
+                         Image **dataset,
+                         Matrix *samples,
+                         int offset,
+                         bool print_image_matrix)
+{
+    Matrix *output = net->layers[net->layer_count - 1].output;
+    int correct_hits_in_batch = 0;
+
+    for (int batch_item = 0; batch_item < samples->rows; batch_item++)
+    {
+        Image *image = dataset[offset + batch_item];
+        float confidence = 0.0f;
+        int predicted_class = predictClassFromOutput(output, batch_item, &confidence);
+
+        if (predicted_class == image->label)
+            correct_hits_in_batch++;
+
+        printf("  [Lote Item %d | Img #%d] Label Real: %d | Previsão: %d (Confiança: %.2f%%)\n",
+               batch_item + 1,
+               offset + batch_item,
+               image->label,
+               predicted_class,
+               confidence * 100.0f);
+
+        if (print_image_matrix)
+            printImageMatrix(image->imgMatrix);
+    }
+
+    return correct_hits_in_batch;
+}
+
 /*
  * trainNeuralNetOnImages:
  *  - net: ponteiro para o modelo neural a ser treinado.
  *  - dataset: array de imagens de treinamento.
- *  - batchSize: tamanho do lote usado em cada atualização de pesos.
- *  - datasetSize: número total de imagens do dataset.
+ *  - batch_size: tamanho do lote usado em cada atualização de pesos.
+ *  - dataset_size: número total de imagens do dataset.
  *  - epochs: número de épocas de treinamento.
- *  - learningRate: taxa de aprendizado aplicada na otimização da rede.
+ *  - learning_rate: taxa de aprendizado aplicada na otimização da rede.
+ *  - validation_split: fração do dataset reservada para validação.
  * Essa função ainda será implementada para realizar o loop de treinamento sobre as imagens.
  */
-void trainNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batchSize, int datasetSize, int epochs, float learningRate)
+void trainingNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batch_size, int dataset_size, int epochs, float learning_rate, float validation_split)
 {
-    Matrix *inputs = datasetToMatrix(dataset, datasetSize);
-    int numClasses = net->layers[net->layerCount - 1].n_neurons;
+    if (validation_split < 0.0f || validation_split >= 1.0f)
+        fatalError("Error: validation_split must be in range [0.0, 1.0).");
+
+    Matrix *inputs = datasetToMatrix(dataset, dataset_size);
+
+    int validation_size = (int)(validation_split * dataset_size);
+    int training_size = dataset_size - validation_size;
+
+    if (training_size <= 0)
+        fatalError("Error: training split produced zero training samples.");
+
+    int class_count = net->layers[net->layer_count - 1].neuron_count;
+    int batch_index = 0;
+
+    int patience = 5;
+    int stagnation_patience = patience;
+    int overfitting_patience = patience;
+    float best_loss = FLT_MAX;
+    float best_val_loss = best_loss;
+    float min_delta = 1e-4f;
 
     for (int epoch = 0; epoch < epochs; epoch++)
     {
-        for (int k = 0; k < datasetSize; k += batchSize)
-        {
-            Matrix *samples = getBatchMatrix(inputs, k, batchSize);
-            Matrix *classLabels = createMatrix(batchSize, numClasses);
+        float loss_dataset = 0.0f;
+        int batches_processed = 0;
 
-            for (int b = 0; b < samples->rows; b++)
+        for (int k = 0; k < training_size; k += batch_size)
+        {
+            Matrix *samples = getBatchMatrix(inputs, k, batch_size);
+            Matrix *class_labels = createMatrix(samples->rows, class_count);
+
+            for (int batch_item = 0; batch_item < samples->rows; batch_item++)
             {
-                Image *img = dataset[k + b];
-                setMatrixValue(1.0f, classLabels, b, img->label);
+                Image *image = dataset[k + batch_item];
+                class_labels->data[idxMatrix(batch_item, image->label, class_labels->cols)] = 1.0f;
             }
 
             propagateForward(samples, net);
 
-            Matrix *output = net->layers[net->layerCount - 1].output;
+            Matrix *output = net->layers[net->layer_count - 1].output;
 
             printf("\n=== Processando Mini-Batch [Imagens %d a %d] ===\n", k, k + samples->rows - 1);
 
-            for (int b = 0; b < samples->rows; b++)
-            {
-                Image *img = dataset[k + b];
-                int trueLabel = img->label;
+            int correct_hits_in_batch = evaluateBatch(net, dataset, samples, k, false);
+            float batch_accuracy = (float)correct_hits_in_batch / samples->rows;
+            float avg_loss_batch = CategoricalCrossEntropy(output, class_labels);
 
-                int predictedClass = 0;
-                float maxProb = getMatrixValue(output, b, 0);
+            loss_dataset += avg_loss_batch;
+            batches_processed++;
 
-                for (int c = 1; c < output->cols; c++)
-                {
-                    float prob = getMatrixValue(output, b, c);
-                    if (prob > maxProb)
-                    {
-                        maxProb = prob;
-                        predictedClass = c;
-                    }
-                }
-
-                printf("  [Lote Item %d | Img #%d] Label Real: %d | Previsão: %d (Confiança: %.2f%%)\n",
-                       b + 1, k + b, trueLabel, predictedClass, maxProb * 100.0f);
-            }
+            printf("\n  [Métrica do Mini-Batch] Acurácia: %.2f%% | Média Erro: %.6f\n",
+                   batch_accuracy * 100.0f, avg_loss_batch);
 
             printf("==================================================\n");
 
-            propagateBackward(net, samples, classLabels, learningRate);
+            saveParametersOnCsv("plot/net_metric.csv", "a", "batch,accuracy,learning_rate", "%d,%.2f,%.2f\n", batch_index++, batch_accuracy * 100.0f, learning_rate);
+
+            propagateBackward(net, samples, class_labels, learning_rate);
 
             freeMatrixData(samples);
             free(samples);
 
-            freeMatrixData(classLabels);
-            free(classLabels);
+            freeMatrixData(class_labels);
+            free(class_labels);
         }
+
+        float loss_epoch = loss_dataset / batches_processed;
+
+        printf("[Debug Época %d] Perda Atual: %.6f | Melhor Perda: %.6f | Paciência: %d\n",
+               epoch + 1, loss_epoch, best_loss, stagnation_patience);
+
+        if (loss_epoch < (best_loss - min_delta))
+        {
+            best_loss = loss_epoch;
+            stagnation_patience = patience; 
+        }
+        else
+        {
+            stagnation_patience--; 
+
+            if (stagnation_patience == 0)
+            {
+                printf("\n[Early Stopping] Treinamento interrompido na época %d devido a estagnação da perda.\n", epoch + 1);
+                break; 
+            }
+        }
+
+        if (validation_size > 0)
+        {
+            float val_loss = validateNeuralNet(net, &dataset[training_size], validation_size, batch_size);
+            printf("[Epoch %d] Validation Err: %.2f%%\n", epoch + 1, val_loss);
+
+            if (val_loss < (best_val_loss - min_delta))
+            {
+                best_val_loss = val_loss;
+                overfitting_patience = patience;
+            }
+            else
+            {
+                overfitting_patience--;
+
+                if (overfitting_patience == 0)
+                {
+                    printf("\n[Early Stopping por Overfitting] A rede esta memorizando, portanto a perda durante validação parou de melhor.\n");
+                    break;
+                }
+            }
+        }
+   
     }
 
     freeMatrixData(inputs);
     free(inputs);
 }
 
-float testNeuralNet(NeuralNetModel *net, Image **dataset, int datasetSize, int batchSize)
+float testNeuralNet(NeuralNetModel *net, Image **dataset, int dataset_size, int batch_size)
 {
-    Matrix *inputs = datasetToMatrix(dataset, datasetSize);
+    Matrix *inputs = datasetToMatrix(dataset, dataset_size);
+    int correct_hits = 0;
+    int batch_index = 0;
 
-    int countCorrectHits = 0;
-    int numBatchs = 0;
-
-    for (int i = 0; i < datasetSize; i += batchSize)
+    for (int i = 0; i < dataset_size; i += batch_size)
     {
-        int hitsOnBatch = 0;
-
-        Matrix *samples = getBatchMatrix(inputs, i, batchSize);
+        Matrix *samples = getBatchMatrix(inputs, i, batch_size);
 
         propagateForward(samples, net);
 
-        Matrix *output = net->layers[net->layerCount - 1].output;
+        int correct_hits_in_batch = evaluateBatch(net, dataset, samples, i, true);
+        float batch_accuracy = ((float)correct_hits_in_batch / samples->rows) * 100.0f;
 
-        for (int b = 0; b < samples->rows; b++)
-        {
-            Image *img = dataset[i + b];
-            int trueLabel = img->label;
+        printf(" Porcentagem de acerto no Lote: %.2f%% \n", batch_accuracy);
+        printf(" Porcentagem de acerto no Lote n.%d: %.2f%% \n", batch_index++, batch_accuracy);
 
-            int predictedClass = 0;
-            float maxProb = getMatrixValue(output, b, 0);
-
-            for (int c = 1; c < output->cols; c++)
-            {
-                float prob = getMatrixValue(output, b, c);
-                if (prob > maxProb)
-                {
-                    maxProb = prob;
-                    predictedClass = c;
-                }
-            }
-
-            printf("  [Lote Item %d | Img #%d] Label Real: %d | Previsão: %d (Confiança: %.2f%%)\n",
-                   b + 1, i + b, trueLabel, predictedClass, maxProb * 100.0f);
-
-            printImageMatrix(img->imgMatrix);
-
-            if (predictedClass == trueLabel)
-                hitsOnBatch++;
-        }
-
-        float percentOnBatch = ((float)hitsOnBatch / samples->rows) * 100.0f;
-        printf(" Porcentagem de acerto no Lote n.%d: %.2f%% \n", numBatchs++, percentOnBatch);
-
-        countCorrectHits += hitsOnBatch;
+        correct_hits += correct_hits_in_batch;
 
         freeMatrixData(samples);
         free(samples);
@@ -319,121 +397,192 @@ float testNeuralNet(NeuralNetModel *net, Image **dataset, int datasetSize, int b
     freeMatrixData(inputs);
     free(inputs);
 
-    return (float)countCorrectHits / datasetSize * 100.0f;
+    return (float)correct_hits / dataset_size * 100.0f;
+}
+
+float validateNeuralNet(NeuralNetModel *net, Image **dataset, int dataset_size, int batch_size)
+{
+    Matrix *inputs = datasetToMatrix(dataset, dataset_size);
+    float loss_dataset = 0.0f;
+    int total_batches = 0;
+
+    int class_count = net->layers[net->layer_count - 1].neuron_count;
+
+    for (int i = 0; i < dataset_size; i += batch_size)
+    {
+        Matrix *samples = getBatchMatrix(inputs, i, batch_size);
+        Matrix *class_labels = createMatrix(samples->rows, class_count);
+
+        for (int batch_item = 0; batch_item < samples->rows; batch_item++)
+        {
+            Image *image = dataset[i + batch_item];
+            class_labels->data[idxMatrix(batch_item, image->label, class_labels->cols)] = 1.0f;
+        }
+
+        propagateForward(samples, net);
+
+        Matrix *output = net->layers[net->layer_count - 1].output;
+
+        float avg_loss_batch = CategoricalCrossEntropy(output, class_labels);
+
+        loss_dataset += avg_loss_batch;
+        total_batches++;
+
+        freeMatrixData(samples);
+        free(samples);
+
+        freeMatrixData(class_labels);
+        free(class_labels);
+    }
+
+    freeMatrixData(inputs);
+    free(inputs);
+
+    return loss_dataset / total_batches;
 }
 
 void saveNeuralNet(NeuralNetModel *net, char *filename)
 {
-    if (!net || !net->layerCount || !net->layers)
+    if (!net || !net->layer_count || !net->layers)
         fatalError("Error: Error: Passed a invalid network as argument");
 
-    FILE *fp = fopen(filename, "wb");
+    FILE *file = fopen(filename, "wb");
 
-    if (!fp)
+    if (!file)
         fatalError("Error: fopen fail to open the file to write.");
 
-    int numLayer = net->layerCount;
+    int layer_count = net->layer_count;
 
-    if (fwrite(&numLayer, sizeof(int), 1, fp) != 1)
+    if (fwrite(&layer_count, sizeof(int), 1, file) != 1)
         fatalError("Error: fwrite fail to write in file.");
 
-    for (int i = 0; i < numLayer; i++)
+    for (int i = 0; i < layer_count; i++)
     {
         NetworkLayer *layer = &net->layers[i];
 
-        fwrite(&layer->n_neurons, sizeof(int), 1, fp);
+        fwrite(&layer->neuron_count, sizeof(int), 1, file);
 
         Matrix *weights = layer->weights;
-        fwrite(&layer->weights->rows, sizeof(int), 1, fp);
-        fwrite(&layer->weights->cols, sizeof(int), 1, fp);
-        fwrite(layer->weights->data, sizeof(float), weights->rows * weights->cols, fp);
+        fwrite(&layer->weights->rows, sizeof(int), 1, file);
+        fwrite(&layer->weights->cols, sizeof(int), 1, file);
+        fwrite(layer->weights->data, sizeof(float), weights->rows * weights->cols, file);
 
         Matrix *bias = layer->bias;
-        fwrite(&layer->bias->rows, sizeof(int), 1, fp);
-        fwrite(&layer->bias->cols, sizeof(int), 1, fp);
-        fwrite(layer->bias->data, sizeof(float), bias->rows * bias->cols, fp);
+        fwrite(&layer->bias->rows, sizeof(int), 1, file);
+        fwrite(&layer->bias->cols, sizeof(int), 1, file);
+        fwrite(layer->bias->data, sizeof(float), bias->rows * bias->cols, file);
     }
 
-    fclose(fp);
+    fclose(file);
 }
 
-NeuralNetModel loadNeuralNet(char *filename, int batchSize)
+NeuralNetModel loadNeuralNet(char *filename, int batch_size)
 {
-    FILE *fp = fopen(filename, "rb");
+    FILE *file = fopen(filename, "rb");
 
-    if (!fp)
+    if (!file)
         fatalError("Error: fopen fail to open the file to read.");
 
-    int layerCount = 0;
+    int layer_count = 0;
 
-    if (fread(&layerCount, sizeof(int), 1, fp) != 1)
+    if (fread(&layer_count, sizeof(int), 1, file) != 1)
     {
-        fclose(fp);
+        fclose(file);
         fatalError("Error: fread fail to read layerCount from file.");
     }
 
-    NeuralNetModel net = {.layerCount = 0, .layers = NULL};
+    NeuralNetModel net = {.layer_count = 0, .layers = NULL};
 
-    for (int i = 0; i < layerCount; i++)
+    for (int i = 0; i < layer_count; i++)
     {
-        int n_neurons = 0;
-        int wRows = 0, wCols = 0;
-        int bRows = 0, bCols = 0;
+        int neuron_count = 0;
+        int weight_rows = 0, weight_cols = 0;
+        int bias_rows = 0, bias_cols = 0;
 
-        if (fread(&n_neurons, sizeof(int), 1, fp) != 1)
-            fatalError("Error: fread fail to read n_neurons.");
+        if (fread(&neuron_count, sizeof(int), 1, file) != 1)
+            fatalError("Error: fread fail to read neuron_count.");
 
-        if (fread(&wRows, sizeof(int), 1, fp) != 1)
+        if (fread(&weight_rows, sizeof(int), 1, file) != 1)
             fatalError("Error: fread fail to read weights rows.");
-        if (fread(&wCols, sizeof(int), 1, fp) != 1)
+        if (fread(&weight_cols, sizeof(int), 1, file) != 1)
             fatalError("Error: fread fail to read weights cols.");
 
-        NetworkLayer layer = newNetworkLayer(batchSize, n_neurons, wRows);
+        NetworkLayer layer = newNetworkLayer(batch_size, neuron_count, weight_rows);
 
-        if (fread(layer.weights->data, sizeof(float), wRows * wCols, fp) != (size_t)(wRows * wCols))
+        if (fread(layer.weights->data, sizeof(float), weight_rows * weight_cols, file) != (size_t)(weight_rows * weight_cols))
             fatalError("Error: fread failed to read weights data.");
 
-        if (fread(&bRows, sizeof(int), 1, fp) != 1)
+        if (fread(&bias_rows, sizeof(int), 1, file) != 1)
             fatalError("Error: fread fail to read bias rows.");
-        if (fread(&bCols, sizeof(int), 1, fp) != 1)
+        if (fread(&bias_cols, sizeof(int), 1, file) != 1)
             fatalError("Error: fread fail to read bias cols.");
 
-        if (fread(layer.bias->data, sizeof(float), bRows * bCols, fp) != (size_t)(bRows * bCols))
+        if (fread(layer.bias->data, sizeof(float), bias_rows * bias_cols, file) != (size_t)(bias_rows * bias_cols))
             fatalError("Error: fread failed to read bias data.");
 
         appendLayerToNeuralNet(&net, layer);
     }
 
-    fclose(fp);
+    fclose(file);
 
     return net;
 }
 
-/*
- * freeNeuralNet:
- *  - neuralNet: ponteiro para o modelo neural a ser liberado.
- * Libera a memória alocada para cada camada, incluindo pesos, bias e saídas da rede.
- */
-void freeNeuralNet(NeuralNetModel *neuralNet)
+void saveParametersOnCsv(char *filename, char *mode, char *csv_header, char *fmt, ...)
 {
-    if (neuralNet == NULL)
-        return;
+    FILE *file = fopen(filename, mode);
 
-    for (int i = 0; i < neuralNet->layerCount; i++)
+    if (!file)
+        fatalError("Error: fopen fail to open the file to write or append.");
+
+    if (strcmp(mode, "w") == 0 || (strcmp(mode, "a") == 0 && ftell(file) == 0))
     {
-        freeMatrixData(neuralNet->layers[i].weights);
-        free(neuralNet->layers[i].weights);
+        if (fputs(csv_header, file) == EOF)
+        {
+            fclose(file);
+            fatalError("Error: fputs failed to write csv header.");
+        }
 
-        freeMatrixData(neuralNet->layers[i].bias);
-        free(neuralNet->layers[i].bias);
-
-        freeMatrixData(neuralNet->layers[i].output);
-        free(neuralNet->layers[i].output);
+        if (csv_header[strlen(csv_header) - 1] != '\n')
+            fputc('\n', file);
     }
 
-    free(neuralNet->layers);
-    neuralNet->layers = NULL;
-    neuralNet->layerCount = 0;
+    va_list arguments;
+    va_start(arguments, fmt);
+    vfprintf(file, fmt, arguments);
+    va_end(arguments);
+
+    if (fmt[strlen(fmt) - 1] != '\n')
+        fputc('\n', file);
+
+    fclose(file);
+}
+
+/*
+ * freeNeuralNet:
+ *  - neural_net: ponteiro para o modelo neural a ser liberado.
+ * Libera a memória alocada para cada camada, incluindo pesos, bias e saídas da rede.
+ */
+void freeNeuralNet(NeuralNetModel *neural_net)
+{
+    if (neural_net == NULL)
+        return;
+
+    for (int i = 0; i < neural_net->layer_count; i++)
+    {
+        freeMatrixData(neural_net->layers[i].weights);
+        free(neural_net->layers[i].weights);
+
+        freeMatrixData(neural_net->layers[i].bias);
+        free(neural_net->layers[i].bias);
+
+        freeMatrixData(neural_net->layers[i].output);
+        free(neural_net->layers[i].output);
+    }
+
+    free(neural_net->layers);
+    neural_net->layers = NULL;
+    neural_net->layer_count = 0;
 }
 
 /*
@@ -449,13 +598,13 @@ void printNeuralNet(NeuralNetModel *net)
         return;
     }
 
-    printf("NeuralNet: %d layers\n", net->layerCount);
+    printf("NeuralNet: %d layers\n", net->layer_count);
 
-    for (int i = 0; i < net->layerCount; i++)
+    for (int i = 0; i < net->layer_count; i++)
     {
         NetworkLayer *layer = &net->layers[i];
         printf("\nLayer %d:\n", i);
-        printf("  neurons: %d\n", layer->n_neurons);
+        printf("  neurons: %d\n", layer->neuron_count);
 
         printf("  weights:\n");
         printMatrixFormatted(layer->weights);

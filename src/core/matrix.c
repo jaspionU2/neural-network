@@ -38,11 +38,11 @@ Matrix *createMatrix(int rows, int cols)
  */
 void fillMatrixWithValue(Matrix *matrix, float value)
 {
-    for (int i = 0; i < matrix->rows; i++)
+    for (int row_index = 0; row_index < matrix->rows; row_index++)
     {
-        for (int j = 0; j < matrix->cols; j++)
+        for (int col_index = 0; col_index < matrix->cols; col_index++)
         {
-            setMatrixValue(value, matrix, i, j);
+            matrix->data[idxMatrix(row_index, col_index, matrix->cols)] = value;
         }
     }
 }
@@ -82,8 +82,8 @@ float getMatrixValue(Matrix *matrix, int row, int col)
  */
 float randomUniformFloat(float min, float max)
 {
-    double scale = (double)rand() / RAND_MAX;
-    return min + scale * (max - min);
+    double random_scale = (double)rand() / RAND_MAX;
+    return min + random_scale * (max - min);
 }
 
 /*
@@ -93,11 +93,11 @@ float randomUniformFloat(float min, float max)
  */
 void fillMatrixRandom(Matrix *matrix, float min, float max)
 {
-    for (int i = 0; i < matrix->rows; i++)
+    for (int row_index = 0; row_index < matrix->rows; row_index++)
     {
-        for (int j = 0; j < matrix->cols; j++)
+        for (int col_index = 0; col_index < matrix->cols; col_index++)
         {
-            setMatrixValue(randomUniformFloat(min, max), matrix, i, j);
+            matrix->data[idxMatrix(row_index, col_index, matrix->cols)] = randomUniformFloat(min, max);
         }
     }
 }
@@ -106,11 +106,11 @@ void fillMatrixXavier(Matrix *matrix, int fan_in, int fan_out)
 {
     float limit = sqrtf(6.0f / (fan_in + fan_out));
 
-    for (int i = 0; i < matrix->rows; i++)
+    for (int row_index = 0; row_index < matrix->rows; row_index++)
     {
-        for (int j = 0; j < matrix->cols; j++)
+        for (int col_index = 0; col_index < matrix->cols; col_index++)
         {
-            setMatrixValue(randomUniformFloat(-limit, limit), matrix, i, j);
+            matrix->data[idxMatrix(row_index, col_index, matrix->cols)] = randomUniformFloat(-limit, limit);
         }
     }
 }
@@ -123,11 +123,12 @@ void fillMatrixXavier(Matrix *matrix, int fan_in, int fan_out)
  */
 Matrix *cloneMatrix(Matrix *matrix)
 {
-    if (!matrix || !matrix->data) return NULL;
+    if (!matrix || !matrix->data)
+        return NULL;
 
-    Matrix *dupMatrix = createMatrix(matrix->rows, matrix->cols);
-    memcpy(dupMatrix->data, matrix->data, matrix->rows * matrix->cols * sizeof(float));
-    return dupMatrix;
+    Matrix *duplicate_matrix = createMatrix(matrix->rows, matrix->cols);
+    memcpy(duplicate_matrix->data, matrix->data, matrix->rows * matrix->cols * sizeof(float));
+    return duplicate_matrix;
 }
 
 Matrix *flatMatrix(Matrix *matrix)
@@ -135,30 +136,29 @@ Matrix *flatMatrix(Matrix *matrix)
     if (!matrix || !matrix->data)
         fatalError("Error: Null matrix passed to flatMatrix.");
 
-    int totalElements = matrix->rows * matrix->cols;
-    Matrix *flattenedMatrix = createMatrix(1, totalElements);
+    int total_elements = matrix->rows * matrix->cols;
+    Matrix *flattened_matrix = createMatrix(1, total_elements);
 
-    memcpy(flattenedMatrix->data, matrix->data, totalElements * sizeof(float));
+    memcpy(flattened_matrix->data, matrix->data, total_elements * sizeof(float));
 
-    return flattenedMatrix;
+    return flattened_matrix;
 }
 
-Matrix *getBatchMatrix(Matrix *src, int startIdx, int batchSize)
+Matrix *getBatchMatrix(Matrix *src, int start_idx, int batch_size)
 {
     if (!src || !src->data)
         fatalError("Error: Invalid source matrix in getBatchView.");
 
-    int actualBatchSize = batchSize;
-    if (startIdx + batchSize > src->rows)
+    int actual_batch_size = batch_size;
+    if (start_idx + batch_size > src->rows)
     {
-        actualBatchSize = src->rows - startIdx;
+        actual_batch_size = src->rows - start_idx;
     }
 
-    Matrix *batch = createMatrix(actualBatchSize, src->cols);
+    Matrix *batch = createMatrix(actual_batch_size, src->cols);
+    int offset = start_idx * src->cols;
 
-    int offset = startIdx * src->cols;
-
-    memcpy(batch->data, &src->data[offset], actualBatchSize * src->cols * sizeof(float));
+    memcpy(batch->data, &src->data[offset], actual_batch_size * src->cols * sizeof(float));
 
     return batch;
 }
@@ -171,12 +171,12 @@ Matrix *getBatchMatrix(Matrix *src, int startIdx, int batchSize)
 void printMatrixFormatted(Matrix *matrix)
 {
     printf("rows: %d cols: %d\n", matrix->rows, matrix->cols);
-    for (int i = 0; i < matrix->rows; i++)
+    for (int row_index = 0; row_index < matrix->rows; row_index++)
     {
         printf("[");
-        for (int j = 0; j < matrix->cols; j++)
+        for (int col_index = 0; col_index < matrix->cols; col_index++)
         {
-            printf(" %.1f", getMatrixValue(matrix, i, j));
+            printf(" %.1f", matrix->data[idxMatrix(row_index, col_index, matrix->cols)]);
         }
         printf(" ]\n");
     }

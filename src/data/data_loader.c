@@ -17,18 +17,18 @@
  */
 Image *newImage(int label, int rows, int cols)
 {
-    Image *img = (Image *)malloc(sizeof(Image));
+    Image *image = (Image *)malloc(sizeof(Image));
 
-    if (!img)
+    if (!image)
         fatalError("Error: Fail to allocate memory to Image struct.");
 
-    img->label = label;
-    img->imgMatrix = createMatrix(rows, cols);
+    image->label = label;
+    image->imgMatrix = createMatrix(rows, cols);
 
-    if (!img->imgMatrix)
+    if (!image->imgMatrix)
         fatalError("Error: Allocation fail. It was not possible to create a new image matrix.");
 
-    return img;
+    return image;
 }
 
 /*
@@ -39,142 +39,137 @@ Image *newImage(int label, int rows, int cols)
  */
 Image *cloneImage(Image *image)
 {
-    Image *dupImage = newImage(image->label, 0, 0);
-    dupImage->imgMatrix = cloneMatrix(image->imgMatrix);
+    Image *duplicate_image = newImage(image->label, 0, 0);
+    duplicate_image->imgMatrix = cloneMatrix(image->imgMatrix);
 
-    return dupImage;
+    return duplicate_image;
 }
 
 /*
  * appendImageToDataset:
- *  - imgDataset: ponteiro para o array de imagens.
- *  - currentSize: ponteiro com o tamanho atual do dataset.
- *  - img: imagem a ser adicionada.
+ *  - image_dataset: ponteiro para o array de imagens.
+ *  - current_size: ponteiro com o tamanho atual do dataset.
+ *  - image: imagem a ser adicionada.
  * Adiciona uma imagem ao final do dataset, realocando o vetor conforme necessário.
  */
-void appendImageToDataset(Image ***imgDataset, int *currentSize, Image *img)
+void appendImageToDataset(Image ***image_dataset, int *current_size, Image *image)
 {
-    int newSize = *currentSize + 1;
+    int new_size = *current_size + 1;
+    Image **resized_dataset = realloc(*image_dataset, new_size * sizeof(Image *));
 
-    Image **temp = realloc(*imgDataset, newSize * sizeof(Image *));
-
-    if (!temp)
+    if (!resized_dataset)
         fatalError("Error: realloc to a imageDataset fail.");
 
-    *imgDataset = temp;
-
-    (*imgDataset)[*currentSize] = cloneImage(img);
-    *currentSize = newSize;
+    *image_dataset = resized_dataset;
+    (*image_dataset)[*current_size] = cloneImage(image);
+    *current_size = new_size;
 }
 
 /*
  * loadImageDataset:
  *  - filename: caminho do arquivo CSV que contém as imagens.
- *  - n_sample: número máximo de amostras a carregar.
+ *  - sample_limit: número máximo de amostras a carregar.
  * Retorna: array de ponteiros para imagens lidas do arquivo.
  * A função percorre o CSV, extrai rótulo e pixels e monta um dataset para treino ou teste.
  */
-Image **loadImageDataset(const char *filename, int n_sample, int startAt)
+Image **loadImageDataset(const char *filename, int sample_limit, int start_offset)
 {
-    FILE *fp = fopen(filename, "r");
+    FILE *file = fopen(filename, "r");
 
-    if (!fp)
+    if (!file)
         fatalError("Error: fopen cannot open the file, filename does not exist or it's wrong");
 
     char buffer[8912];
-    int count_samples = 0;
-    Image **ds = NULL;
+    int loaded_samples = 0;
+    Image **dataset = NULL;
+    int has_header = 1;
+    int dataset_size = 0;
 
-    int isHeader = 1;
-    int currentDsSize = 0;
-
-    for (int i = 0; i < startAt; i++)
+    for (int i = 0; i < start_offset; i++)
     {
-        if (fgets(buffer, sizeof(buffer), fp) == NULL) 
+        if (fgets(buffer, sizeof(buffer), file) == NULL)
             break;
     }
 
-    while (fgets(buffer, sizeof(buffer), fp) != NULL && count_samples < n_sample)
+    while (fgets(buffer, sizeof(buffer), file) != NULL && loaded_samples < sample_limit)
     {
-        if (isHeader)
+        if (has_header)
         {
-            isHeader = 0;
+            has_header = 0;
             continue;
         }
 
         buffer[strcspn(buffer, "\r\n")] = '\0';
-
         char *token = strtok(buffer, ",");
 
         if (!token)
             fatalError("Error: strtok, there are no tokens to read.");
 
-        int label_val = atoi(token);
-        Image *img = newImage(label_val, 28, 28);
+        int label_value = atoi(token);
+        Image *image = newImage(label_value, 28, 28);
 
-        for (int i = 0; i < img->imgMatrix->rows; i++)
+        for (int row_index = 0; row_index < image->imgMatrix->rows; row_index++)
         {
-            for (int j = 0; j < img->imgMatrix->cols; j++)
+            for (int col_index = 0; col_index < image->imgMatrix->cols; col_index++)
             {
                 token = strtok(NULL, ",");
                 if (token)
                 {
                     float value = atoi(token) / 255.0f;
-                    setMatrixValue(value, img->imgMatrix, i, j);
+                    image->imgMatrix->data[idxMatrix(row_index, col_index, image->imgMatrix->cols)] = value;
                 }
             }
         }
 
-        count_samples++;
-        appendImageToDataset(&ds, &currentDsSize, img);
+        loaded_samples++;
+        appendImageToDataset(&dataset, &dataset_size, image);
     }
 
-    fclose(fp);
+    fclose(file);
 
-    return ds;
+    return dataset;
 }
 
-Matrix *datasetToMatrix(Image **imgDataset, int datasetSize)
+Matrix *datasetToMatrix(Image **image_dataset, int dataset_size)
 {
-    if (!imgDataset || datasetSize <= 0)
+    if (!image_dataset || dataset_size <= 0)
         fatalError("Error: Invalid dataset passed to flatDataset.");
 
-    if (!imgDataset[0] || !imgDataset[0]->imgMatrix)
+    if (!image_dataset[0] || !image_dataset[0]->imgMatrix)
         fatalError("Error: First image in dataset is uninitialized.");
 
-    int pixels_per_img = imgDataset[0]->imgMatrix->rows * imgDataset[0]->imgMatrix->cols;
+    int pixels_per_image = image_dataset[0]->imgMatrix->rows * image_dataset[0]->imgMatrix->cols;
+    Matrix *flat_data = createMatrix(dataset_size, pixels_per_image);
 
-    Matrix *flatData = createMatrix(datasetSize, pixels_per_img);
-
-    for (int i = 0; i < datasetSize; i++)
+    for (int image_index = 0; image_index < dataset_size; image_index++)
     {
-        if (!imgDataset[i] || !imgDataset[i]->imgMatrix || !imgDataset[i]->imgMatrix->data)
+        if (!image_dataset[image_index] || !image_dataset[image_index]->imgMatrix || !image_dataset[image_index]->imgMatrix->data)
             fatalError("Error: Found null image during row dataset flattening.");
 
-        float *src = imgDataset[i]->imgMatrix->data;
+        float *source_data = image_dataset[image_index]->imgMatrix->data;
 
-        for (int j = 0; j < pixels_per_img; j++)
+        for (int pixel_index = 0; pixel_index < pixels_per_image; pixel_index++)
         {
-            flatData->data[idxMatrix(i, j, flatData->cols)] = src[j];
+            flat_data->data[idxMatrix(image_index, pixel_index, flat_data->cols)] = source_data[pixel_index];
         }
     }
 
-    return flatData;
+    return flat_data;
 }
 
-void printImageMatrix(Matrix *imgMatrix)
+void printImageMatrix(Matrix *img_matrix)
 {
-    for (int i = 0; i < imgMatrix->rows; i++)
+    for (int row_index = 0; row_index < img_matrix->rows; row_index++)
     {
-        for (int j = 0; j < imgMatrix->cols; j++)
+        for (int col_index = 0; col_index < img_matrix->cols; col_index++)
         {
-            float v = getMatrixValue(imgMatrix, i, j);
+            float pixel_value = img_matrix->data[idxMatrix(row_index, col_index, img_matrix->cols)];
 
-            if (v > 0.8f)
+            if (pixel_value > 0.8f)
                 printf("##");
-            else if (v > 0.5f)
+            else if (pixel_value > 0.5f)
                 printf("  ");
-            else if (v > 0.2f)
+            else if (pixel_value > 0.2f)
                 printf("..");
             else
                 printf("  ");
@@ -186,17 +181,17 @@ void printImageMatrix(Matrix *imgMatrix)
 /*
  * freeImageDataset:
  *  - dataset: ponteiro para o array de imagens a ser liberado.
- *  - datasetSize: número de imagens no dataset.
+ *  - dataset_size: número de imagens no dataset.
  * Libera todas as imagens e o vetor de ponteiros, evitando vazamento de memória.
  */
-void freeImageDataset(Image ***dataset, int datasetSize)
+void freeImageDataset(Image ***dataset, int dataset_size)
 {
     if (*dataset)
     {
-        for (int i = 0; i < datasetSize; i++)
+        for (int image_index = 0; image_index < dataset_size; image_index++)
         {
-            freeMatrixData((*dataset)[i]->imgMatrix);
-            free((*dataset)[i]);
+            freeMatrixData((*dataset)[image_index]->imgMatrix);
+            free((*dataset)[image_index]);
         }
     }
 

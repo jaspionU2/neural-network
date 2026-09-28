@@ -33,7 +33,7 @@ Matrix *transposeMatrix(Matrix *matrix)
     {
         for (int j = 0; j < matrix->cols; j++)
         {
-            setMatrixValue(getMatrixValue(matrix, i, j), tMatrix, j, i);
+            tMatrix->data[idxMatrix(j, i, tMatrix->cols)] = matrix->data[idxMatrix(i, j, matrix->cols)];
         }
     }
 
@@ -65,10 +65,10 @@ Matrix *multiplyMatrices(Matrix *matrixA, Matrix *matrixB)
             for (int k = 0; k < matrixA->cols; k++)
             {
                 sum +=
-                    getMatrixValue(matrixA, i, k) *
-                    getMatrixValue(matrixB, k, j);
+                    matrixA->data[idxMatrix(i, k, matrixA->cols)] *
+                    matrixB->data[idxMatrix(k, j, matrixB->cols)];
             }
-            setMatrixValue(sum, dotMatrix, i, j);
+            dotMatrix->data[idxMatrix(i, j, dotMatrix->cols)] = sum;
         }
     }
 
@@ -90,7 +90,7 @@ Matrix *multiplyMatrixByScalar(Matrix *matrix, float scalar)
     {
         for (int j = 0; j < matrix->cols; j++)
         {
-            scalarMatrix->data[idxMatrix(i, j, matrix->cols)] = getMatrixValue(matrix, i, j) * scalar;
+            scalarMatrix->data[idxMatrix(i, j, matrix->cols)] = matrix->data[idxMatrix(i, j, matrix->cols)] * scalar;
         }
     }
 
@@ -150,10 +150,10 @@ Matrix *addMatrices(Matrix *matrixA, Matrix *matrixB)
             int rowB = (matrixB->rows == 1) ? 0 : i;
             int colB = (matrixB->cols == 1) ? 0 : j;
 
-            float valA = getMatrixValue(matrixA, rowA, colA);
-            float valB = getMatrixValue(matrixB, rowB, colB);
+            float valA = matrixA->data[idxMatrix(rowA, colA, matrixA->cols)];
+            float valB = matrixB->data[idxMatrix(rowB, colB, matrixB->cols)];
 
-            setMatrixValue(valA + valB, result, i, j);
+            result->data[idxMatrix(i, j, result->cols)] = valA + valB;
         }
     }
 
@@ -196,8 +196,8 @@ Matrix *applyFunctionToMatrix(float (*func)(float), Matrix *matrix)
     {
         for (int j = 0; j < matrix->cols; j++)
         {
-            float value = getMatrixValue(matrix, i, j);
-            setMatrixValue((*func)(value), appliedMatrix, i, j);
+            float value = matrix->data[idxMatrix(i, j, matrix->cols)];
+            appliedMatrix->data[idxMatrix(i, j, appliedMatrix->cols)] = (*func)(value);
         }
     }
 

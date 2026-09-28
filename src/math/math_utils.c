@@ -5,27 +5,21 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-/*
- * sigmoid:
- *  - input: valor bruto da entrada.
- * Retorna: resultado da ativação sigmoide, que limita o valor ao intervalo (0, 1).
- * Essa função é usada para transformar sinais lineares em valores de ativação não lineares.
- */
 void sigmoid(Matrix *matrix)
 {
-    int totalElements = matrix->rows * matrix->cols;
-    for (int k = 0; k < totalElements; k++)
+    int total_elements = matrix->rows * matrix->cols;
+    for (int element_index = 0; element_index < total_elements; element_index++)
     {
-        float z;
+        float activated_value;
 
-        if (matrix->data[k] < -88.0f)
-            z = 0.0f;
-        else if (matrix->data[k] > 88.0f)
-            z = 1.0f;
+        if (matrix->data[element_index] < -88.0f)
+            activated_value = 0.0f;
+        else if (matrix->data[element_index] > 88.0f)
+            activated_value = 1.0f;
         else
-            z = 1.0f / (1 + expf(-(matrix->data[k])));
+            activated_value = 1.0f / (1 + expf(-(matrix->data[element_index])));
 
-        matrix->data[k] = z;
+        matrix->data[element_index] = activated_value;
     }
 }
 
@@ -34,59 +28,46 @@ void softmax(Matrix *output)
     if (!output || !output->data)
         fatalError("Error: Invalid matrix passed to softmax.");
 
-    for (int i = 0; i < output->rows; i++)
+    for (int row_index = 0; row_index < output->rows; row_index++)
     {
-        float maxVal = output->data[idxMatrix(i, 0, output->cols)];
-        for (int j = 1; j < output->cols; j++)
+        float max_value = output->data[idxMatrix(row_index, 0, output->cols)];
+        for (int col_index = 1; col_index < output->cols; col_index++)
         {
-            float val = output->data[idxMatrix(i, j, output->cols)];
-            if (val > maxVal)
-                maxVal = val;
+            float current_value = output->data[idxMatrix(row_index, col_index, output->cols)];
+            if (current_value > max_value)
+                max_value = current_value;
         }
 
-        float sumExp = 0.0f;
-        for (int j = 0; j < output->cols; j++)
+        float sum_exp = 0.0f;
+        for (int col_index = 0; col_index < output->cols; col_index++)
         {
-            float expVal = expf(output->data[idxMatrix(i, j, output->cols)] - maxVal);
-            output->data[idxMatrix(i, j, output->cols)] = expVal;
-            sumExp += expVal;
+            float exp_value = expf(output->data[idxMatrix(row_index, col_index, output->cols)] - max_value);
+            output->data[idxMatrix(row_index, col_index, output->cols)] = exp_value;
+            sum_exp += exp_value;
         }
 
-        for (int j = 0; j < output->cols; j++)
+        for (int col_index = 0; col_index < output->cols; col_index++)
         {
-            output->data[idxMatrix(i, j, output->cols)] /= sumExp;
+            output->data[idxMatrix(row_index, col_index, output->cols)] /= sum_exp;
         }
     }
 }
 
-/*
- * crossEntropy:
- *  - idxExpectedClass: indíce da classe correta para a entrada processada.
- *  - output: matriz com a saída calculada pela rede.
- * Retorna: valor da perda de entropia cruzada entre a saída esperada e a saída prevista.
- * A função calcula a métrica de erro usada para avaliar o desempenho da rede neural.
- */
-double crossEntropy(Matrix *output, int idxExpectedClass)
+Matrix *sigmoidDerivative(Matrix *pre_activation)
 {
-    return -log(getMatrixValue(output, 0, idxExpectedClass));
-}
-
-Matrix *sigmoidDerivative(Matrix *preActivation)
-{
-    if (!preActivation || !preActivation->data)
+    if (!pre_activation || !pre_activation->data)
         fatalError("Error: Invalid matrix passed to sigmoidDerivative.");
 
-    Matrix *matrix = createMatrix(preActivation->rows, preActivation->cols);
+    Matrix *derivative_matrix = createMatrix(pre_activation->rows, pre_activation->cols);
+    int total_elements = pre_activation->rows * pre_activation->cols;
+    float *source_data = pre_activation->data;
 
-    int totalElements = preActivation->rows * preActivation->cols;
-    float *data = preActivation->data;
-
-    for (int i = 0; i < totalElements; i++)
+    for (int element_index = 0; element_index < total_elements; element_index++)
     {
-        matrix->data[i] = data[i] * (1 - data[i]);
+        derivative_matrix->data[element_index] = source_data[element_index] * (1 - source_data[element_index]);
     }
 
-    return matrix;
+    return derivative_matrix;
 }
 
 Matrix *outputDelta(Matrix *output, Matrix *target)
@@ -100,82 +81,96 @@ Matrix *outputDelta(Matrix *output, Matrix *target)
     return subtractMatrices(output, target);
 }
 
-Matrix *hiddenDelta(Matrix *output, Matrix *nextWeights, Matrix *nextDelta)
+Matrix *hiddenDelta(Matrix *output, Matrix *next_weights, Matrix *next_delta)
 {
     if (!output || !output->data)
         fatalError("Error: Invalid output passed to HiddenDelta.");
 
-    if (!nextWeights || !nextWeights->data)
+    if (!next_weights || !next_weights->data)
         fatalError("Error: Invalid nextWeights passed to HiddenDelta.");
 
-    if (!nextDelta || !nextDelta->data)
+    if (!next_delta || !next_delta->data)
         fatalError("Error: Invalid nextDelta passed to HiddenDelta.");
 
-    Matrix *tWeights = transposeMatrix(nextWeights);
-    Matrix *prodMatrix = multiplyMatrices(nextDelta, tWeights);
+    Matrix *transposed_weights = transposeMatrix(next_weights);
+    Matrix *product_matrix = multiplyMatrices(next_delta, transposed_weights);
+    Matrix *sigmoid_derivative = sigmoidDerivative(output);
+    Matrix *delta = hadamardProduct(product_matrix, sigmoid_derivative);
 
-    Matrix *sigDerivate = sigmoidDerivative(output);
+    freeMatrixData(transposed_weights);
+    free(transposed_weights);
 
-    Matrix *delta = hadamardProduct(prodMatrix, sigDerivate);
+    freeMatrixData(product_matrix);
+    free(product_matrix);
 
-    freeMatrixData(tWeights);
-    free(tWeights);
-
-    freeMatrixData(prodMatrix);
-    free(prodMatrix);
-
-    freeMatrixData(sigDerivate);
-    free(sigDerivate);
+    freeMatrixData(sigmoid_derivative);
+    free(sigmoid_derivative);
 
     return delta;
 }
 
-/*
- * weightedSum:
- *  - weights: vetor de pesos sinápticos.
- *  - wSize: tamanho do vetor de pesos.
- *  - inputs: vetor de entradas da camada.
- *  - iSize: tamanho do vetor de entradas.
- *  - bias: valor de bias somado ao resultado.
- * Retorna: soma ponderada das entradas mais o bias.
- * Essa função representa a parte linear da ativação de um neurônio.
- */
 Matrix *weightedSum(Matrix *inputs, Matrix *weights, Matrix *bias)
 {
-    Matrix *dot = multiplyMatrices(inputs, weights);
-    Matrix *z = addMatrices(dot, bias);
+    Matrix *dot_product = multiplyMatrices(inputs, weights);
+    Matrix *activation = addMatrices(dot_product, bias);
 
-    freeMatrixData(dot);
-    free(dot);
+    freeMatrixData(dot_product);
+    free(dot_product);
 
-    return z;
+    return activation;
 }
 
-void updateLayerParameters(NetworkLayer *layer, Matrix *prevInput, Matrix *delta, int batchSize, float learningRate)
+void updateLayerParameters(NetworkLayer *layer, Matrix *prev_input, Matrix *delta, int batch_size, float learning_rate)
 {
-    Matrix *tInput = transposeMatrix(prevInput);
-    Matrix *gradW = multiplyMatrices(tInput, delta);
+    Matrix *transposed_input = transposeMatrix(prev_input);
+    Matrix *gradient_weights = multiplyMatrices(transposed_input, delta);
+    float scale = learning_rate / (float)batch_size;
 
-    float scale = learningRate / (float)batchSize;
-
-    for (int k = 0; k < layer->weights->rows * layer->weights->cols; k++)
+    int total_elements = layer->weights->rows * layer->weights->cols;
+    for (int element_index = 0; element_index < total_elements; element_index++)
     {
-        layer->weights->data[k] -= scale * gradW->data[k];
+        layer->weights->data[element_index] -= scale * gradient_weights->data[element_index];
     }
 
-    for (int j = 0; j < layer->bias->cols; j++)
+    for (int col_index = 0; col_index < layer->bias->cols; col_index++)
     {
-        float sumDelta = 0.0f;
-        for (int b = 0; b < batchSize; b++)
+        float sum_delta = 0.0f;
+        for (int batch_index = 0; batch_index < batch_size; batch_index++)
         {
-            sumDelta += getMatrixValue(delta, b, j);
+            sum_delta += delta->data[idxMatrix(batch_index, col_index, delta->cols)];
         }
-        layer->bias->data[j] -= scale * sumDelta;
+        layer->bias->data[col_index] -= scale * sum_delta;
     }
 
-    freeMatrixData(tInput);
-    free(tInput);
-    
-    freeMatrixData(gradW);
-    free(gradW);
+    freeMatrixData(transposed_input);
+    free(transposed_input);
+
+    freeMatrixData(gradient_weights);
+    free(gradient_weights);
+}
+
+float CategoricalCrossEntropy(Matrix *output, Matrix *target)
+{
+    if (!output || !output->data)
+        fatalError("Error: Invalid output passed to computeMeanLoss.");
+
+    if (!target || !target->data)
+        fatalError("Error: Invalid target passed to computeMeanLoss.");
+
+    if (output->rows != target->rows || output->cols != target->cols)
+        fatalError("Error: Incompatible dimensions for computeMeanLoss.");
+
+    int total_elements = output->rows * output->cols;
+    float total_loss = 0.0f;
+
+    for (int element_index = 0; element_index < total_elements; element_index++)
+    {
+        float prediction = output->data[element_index];
+        float target_value = target->data[element_index];
+
+        prediction = fmaxf(1e-7f, fminf(prediction, 1.0f - 1e-7f));
+        total_loss += -target_value * logf(prediction);
+    }
+
+    return total_loss / (float)output->rows;
 }

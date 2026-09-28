@@ -30,13 +30,9 @@ static void printHeader(const char *title)
     printf("==================================================\n");
 }
 
-static void printUsage(const char *programName)
+static void printUsage()
 {
-    printf("Uso:\n");
-    printf(" -modo treino- %s [dataset] [train_size] [batch_size] [epochs] [learning_rate]\n", programName);
-    printf(" -modo teste- %s [dataset] [test_size] [batch_size]\n", programName);
-    printf(" -modo treino/teste- %s [dataset] [train_size] [test_size] [batch_size] [epochs] [learning_rate]\n", programName);
-    printf("\nDescricao dos argumentos:\n");
+    printf("Descricao dos argumentos:\n");
     printf("  dataset      = caminho do arquivo CSV do conjunto de dados\n");
     printf("  train_size   = quantidade de imagens usadas no treinamento\n");
     printf("  test_size    = quantidade de imagens usadas no teste\n");
@@ -48,10 +44,58 @@ static void printUsage(const char *programName)
     printf("  test  = carrega a rede salva e avalia a acuracia no conjunto de teste\n");
     printf("  all   = executa treinamento seguido de teste em uma unica execucao\n");
     printf("\nExemplos:\n");
-    printf("  %s train ./data/mnist_test.csv 100 5 3 0.05\n", programName);
-    printf("  %s test  ./data/mnist_test.csv 25 5\n", programName);
-    printf("  %s all   ./data/mnist_test.csv 100 25 5 3 0.05\n", programName);
 }
+
+static void getArguments(enum DemoMode mode, 
+                         char *filename_ptr, 
+                         int *train_size_ptr, 
+                         int *test_size_ptr, 
+                         int *batch_size_ptr, 
+                         int *epoch_ptr, 
+                         float *learning_rate_ptr)
+{
+    const char filename[] = "Caminho do arquivo CSV: ";
+    const char train_size[] = "Quant. de imagens usadas no treinamento: ";
+    const char test_size[] = "Quant. de imagens usadas no teste: ";
+    const char batch_size[] = "Numero de imagens por lote: ";
+    const char epoch[] = "Numero de epocas de treinamento: ";
+    const char learning_rate[] = "Taxa de aprendizado da rede: ";
+
+    if (filename_ptr == NULL || batch_size_ptr == NULL)
+        fatalError("Error: invalid pointer(s) pass as argument.");
+
+    printf("%s", filename);
+    if (scanf("%255s", filename_ptr) != 1)
+        return;
+
+    printf("%s", batch_size);
+    scanf("%d", batch_size_ptr);
+
+    if (mode == DEMO_TRAIN || mode == DEMO_ALL)
+    {
+        if (train_size_ptr == NULL || epoch_ptr == NULL || learning_rate_ptr == NULL)
+            fatalError("Error: invalid pointer(s) pass as argument.");
+
+        printf("%s", train_size);
+        scanf("%d", train_size_ptr);
+
+        printf("%s", epoch);
+        scanf("%d", epoch_ptr);
+
+        printf("%s", learning_rate);
+        scanf("%f", learning_rate_ptr);
+    }
+
+    if (mode == DEMO_TEST || mode == DEMO_ALL)
+    {
+        if (test_size_ptr == NULL)
+            fatalError("Error: invalid pointer(s) pass as argument.");
+
+        printf("%s", test_size);
+        scanf("%d", test_size_ptr);
+    }
+}
+
 
 static enum DemoMode parseMode(const char *mode)
 {
@@ -90,7 +134,7 @@ static void trainDemo(const char *filename,
     printf("Taxa de aprendizado: %.3f\n", learningRate);
 
     NeuralNetModel net = newNeuralNet(batchSize, 4, 128, 784, 10);
-    trainNeuralNetOnImages(&net, trainDataset, batchSize, trainSamples, epochs, learningRate);
+    trainingNeuralNetOnImages(&net, trainDataset, batchSize, trainSamples, epochs, learningRate, 0.2f);
 
     char modelFile[] = "neural_net_cp.bin";
     saveNeuralNet(&net, modelFile);
@@ -133,7 +177,9 @@ int main(int argc, char const *argv[])
 {
     srand((unsigned int)time(NULL));
 
-    const char *filename = DEFAULT_DATASET_PATH;
+    char filename[256];
+    snprintf(filename, sizeof(filename), "%s", DEFAULT_DATASET_PATH);
+
     int trainSamples = DEFAULT_TRAIN_SIZE;
     int testSamples = DEFAULT_TEST_SIZE;
     int batchSize = DEFAULT_BATCH_SIZE;
@@ -168,23 +214,12 @@ int main(int argc, char const *argv[])
 
     if (mode == DEMO_INVALID)
     {
-        printf("Modo invalido: %s\n\n", argv[1]);
-        printUsage(argv[0]);
+        printf("Modo invalido: %s\n\n", input);
+        printUsage();
         return EXIT_FAILURE;
     }
 
-    if (argc > 1)
-        filename = argv[1];
-    if (argc > 2)
-        trainSamples = atoi(argv[2]);
-    if (argc > 3)
-        testSamples = atoi(argv[3]);
-    if (argc > 4)
-        batchSize = atoi(argv[4]);
-    if (argc > 5)
-        epochs = atoi(argv[5]);
-    if (argc > 6)
-        learningRate = (float)atof(argv[6]);
+    getArguments(mode, filename, &trainSamples, &testSamples, &batchSize, &epochs, &learningRate);
 
     if (trainSamples <= 0)
         trainSamples = DEFAULT_TRAIN_SIZE;

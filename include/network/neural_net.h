@@ -2,10 +2,12 @@
 
 #include "core/matrix.h"
 #include "data/data_loader.h"
+#include <stdarg.h>
+#include <stdbool.h>
 
 typedef struct
 {
-    int n_neurons;
+    int neuron_count;
     Matrix *weights;
     Matrix *bias;
     Matrix *output;
@@ -14,27 +16,28 @@ typedef struct
 typedef struct
 {
     NetworkLayer *layers;
-    int layerCount;
+    int layer_count;
 } NeuralNetModel;
 
 /*
  * newNetworkLayer:
- *  - n_samples: quantidade de amostras.
- *  - n_neurons: quantidade de neurônios presentes nessa camada.
- *  - n_neuronsLast: quantidade de neurônios da camada anterior.
+ *  - batch_size: quantidade de amostras processadas no lote.
+ *  - neuron_count: quantidade de neurônios presentes nessa camada.
+ *  - previous_layer_neuron_count: quantidade de neurônios da camada anterior.
  * Retorna: camada inicializada com pesos, bias e saída da ativação.
  */
-NetworkLayer newNetworkLayer(int n_samples, int n_neurons, int n_neuronsLast);
+NetworkLayer newNetworkLayer(int batch_size, int neuron_count, int previous_layer_neuron_count);
 
 /*
  * newNeuralNet:
- *  - n_Layers: número de camadas da rede.
- *  - n_neurons: quantidade de neurônios para as camadas ocultas.
- *  - inputNeurons: tamanho da camada de entrada.
- *  - outuputNeurons: tamanho da camada de saída.
+ *  - batch_size: quantidade de amostras por lote.
+ *  - layer_count: número de camadas da rede, incluindo a saída.
+ *  - hidden_layer_neuron_count: quantidade de neurônios para as camadas ocultas.
+ *  - input_neuron_count: tamanho da camada de entrada.
+ *  - output_neuron_count: tamanho da camada de saída.
  * Retorna: modelo neural com as camadas alocadas e inicializadas.
  */
-NeuralNetModel newNeuralNet(int n_samples, int n_Layers, int n_neurons, int inputNeurons, int outuputNeurons);
+NeuralNetModel newNeuralNet(int batch_size, int layer_count, int hidden_layer_neuron_count, int input_neuron_count, int output_neuron_count);
 
 /*
  * appendLayerToNeuralNet:
@@ -56,19 +59,26 @@ void propagateForward(Matrix *samples, NeuralNetModel *net);
  * propagateBackward:
  * Calcula os gradientes retropropagados para ajustar os pesos da rede.
  */
-void propagateBackward(NeuralNetModel *net, Matrix *samples, Matrix *labels, float learningRate);
+void propagateBackward(NeuralNetModel *net, Matrix *samples, Matrix *labels, float learning_rate);
 
 /*
  * trainNeuralNetOnImages:
  *  - net: modelo neural a ser treinado.
  *  - dataset: conjunto de imagens de treinamento.
- *  - batchSize: tamanho do lote usado no treinamento.
- *  - datasetSize: número de amostras no dataset.
+ *  - batch_size: tamanho do lote usado no treinamento.
+ *  - dataset_size: número de amostras no dataset.
  *  - epochs: quantidade de épocas de treinamento.
- *  - learningRate: taxa de aprendizado usada na atualização dos pesos.
+ *  - learning_rate: taxa de aprendizado usada na atualização dos pesos.
+ *  - validation_split: fração do dataset reservada para validação.
  * Executa o processo de treinamento da rede usando as imagens informadas.
  */
-void trainNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batchSize, int datasetSize, int epochs, float learningRate);
+void trainingNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batch_size, int dataset_size, int epochs, float learning_rate, float validation_split);
+
+float testNeuralNet(NeuralNetModel *net, Image **dataset, int dataset_size, int batch_size);
+
+float validateNeuralNet(NeuralNetModel *net, Image **dataset, int dataset_size, int batch_size);
+
+void saveParametersOnCsv(char *filename, char *mode, char *csv_header, char *fmt, ...);
 
 /*
  * printNeuralNet:
@@ -79,7 +89,7 @@ void printNeuralNet(NeuralNetModel *net);
 
 /*
  * freeNeuralNet:
- *  - neuralNet: modelo a ser liberado.
+ *  - neural_net: modelo a ser liberado.
  * Libera a memória alocada para as matrizes e limpa o vetor de camadas.
  */
-void freeNeuralNet(NeuralNetModel *neuralNet);
+void freeNeuralNet(NeuralNetModel *neural_net);

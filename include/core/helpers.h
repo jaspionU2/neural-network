@@ -6,3 +6,5 @@
  * Encerrra a aplicação imediatamente com falha, útil para abortar execução em condições irreparáveis.
  */
 void fatalError(const char *message);
+
+void print_progress(size_t count, size_t max);

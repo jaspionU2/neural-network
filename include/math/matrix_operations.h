@@ -4,11 +4,11 @@
 
 /*
  * matricesHaveSameDimensions:
- *  - matrixA: primeira matriz.
- *  - matrixB: segunda matriz.
+ *  - matrix_a: primeira matriz.
+ *  - matrix_b: segunda matriz.
  * Retorna: 1 quando as matrizes têm dimensões iguais e 0 em caso contrário.
  */
-int matricesHaveSameDimensions(Matrix *matrixA, Matrix *matrixB);
+int matricesHaveSameDimensions(Matrix *matrix_a, Matrix *matrix_b);
 
 /*
  * transposeMatrix:
@@ -19,11 +19,11 @@ Matrix *transposeMatrix(Matrix *matrix);
 
 /*
  * multiplyMatrices:
- *  - matrixA: matriz à esquerda no produto.
- *  - matrixB: matriz à direita no produto.
- * Retorna: produto matricial entre matrixA e matrixB.
+ *  - matrix_a: matriz à esquerda no produto.
+ *  - matrix_b: matriz à direita no produto.
+ * Retorna: produto matricial entre matrix_a e matrix_b.
  */
-Matrix *multiplyMatrices(Matrix *matrixA, Matrix *matrixB);
+Matrix *multiplyMatrices(Matrix *matrix_a, Matrix *matrix_b);
 
 /*
  * multiplyMatrixByScalar:
@@ -35,28 +35,28 @@ Matrix *multiplyMatrixByScalar(Matrix *matrix, float scalar);
 
 /*
  * addMatrices:
- *  - matrixA: primeira matriz.
- *  - matrixB: segunda matriz.
+ *  - matrix_a: primeira matriz.
+ *  - matrix_b: segunda matriz.
  * Retorna: matriz resultante da soma elemento a elemento.
  */
-Matrix *addMatrices(Matrix *matrixA, Matrix *matrixB);
+Matrix *addMatrices(Matrix *matrix_a, Matrix *matrix_b);
 
 /*
  * subtractMatrices:
- *  - matrixA: matriz minuendo.
- *  - matrixB: matriz subtraendo.
+ *  - matrix_a: matriz minuendo.
+ *  - matrix_b: matriz subtraendo.
  * Retorna: matriz com a diferença elemento a elemento.
  */
-Matrix *subtractMatrices(Matrix *matrixA, Matrix *matrixB);
+Matrix *subtractMatrices(Matrix *matrix_a, Matrix *matrix_b);
 
 /*
  * hadamardProduct:
- *  - matrixA: primeira matriz.
- *  - matrixB: segunda matriz.
+ *  - matrix_a: primeira matriz.
+ *  - matrix_b: segunda matriz.
  * Retorna: produto de Hadamard (multiplicação elemento a elemento).
  * As matrizes devem ter as mesmas dimensões.
  */
-Matrix *hadamardProduct(Matrix *matrixA, Matrix *matrixB);
+Matrix *hadamardProduct(Matrix *matrix_a, Matrix *matrix_b);
 
 /*
  * applyFunctionToMatrix:
