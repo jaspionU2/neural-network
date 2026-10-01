@@ -316,7 +316,18 @@ void trainingNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batch_s
 
             printf("==================================================\n");
 
-            saveParametersOnCsv(filename, "a", "batch,accuracy,learning_rate", "%d,%.2f,%.2f\n", batch_index++, batch_accuracy * 100.0f, learning_rate);
+            saveParametersOnCsv(filename,
+                                "a",
+                                "epoch,batch,image_start,image_end,batch_size,accuracy,loss,learning_rate",
+                                "%d,%d,%d,%d,%d,%.2f,%.6f,%.2f\n",
+                                epoch + 1,
+                                batch_index++,
+                                k,
+                                k + samples->rows - 1,
+                                samples->rows,
+                                batch_accuracy * 100.0f,
+                                avg_loss_batch,
+                                learning_rate);
 
             propagateBackward(net, samples, class_labels, learning_rate);
 
