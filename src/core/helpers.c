@@ -38,3 +38,13 @@ void print_progress(size_t count, size_t max)
 
     fflush(stdout);
 }
+
+char *getFileExtension(char *filename)
+{
+    char *dot = strrchr(filename, '.');
+
+    if (!dot || dot == filename || *(dot + 1) == '\0')
+        return "";
+
+    return dot + 1;
+}

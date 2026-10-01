@@ -80,6 +80,10 @@ float validateNeuralNet(NeuralNetModel *net, Image **dataset, int dataset_size, 
 
 void saveParametersOnCsv(char *filename, char *mode, char *csv_header, char *fmt, ...);
 
+NeuralNetModel loadNeuralNet(char *filename, int batch_size);
+
+void saveNeuralNet(NeuralNetModel *net, char *filename);
+
 /*
  * printNeuralNet:
  *  - net: rede neural a ser exibida.

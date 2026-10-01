@@ -3,10 +3,12 @@
 #include "math/matrix_operations.h"
 #include "math/math_utils.h"
 #include "network/neural_net.h"
+#include "core/helpers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+
 
 #define DEFAULT_DATASET_PATH "./data/mnist_test.csv"
 #define DEFAULT_TRAIN_SIZE 100
@@ -54,21 +56,14 @@ static void getArguments(enum DemoMode mode,
                          int *epoch_ptr, 
                          float *learning_rate_ptr)
 {
-    const char filename[] = "Caminho do arquivo CSV: ";
-    const char train_size[] = "Quant. de imagens usadas no treinamento: ";
-    const char test_size[] = "Quant. de imagens usadas no teste: ";
-    const char batch_size[] = "Numero de imagens por lote: ";
-    const char epoch[] = "Numero de epocas de treinamento: ";
-    const char learning_rate[] = "Taxa de aprendizado da rede: ";
-
     if (filename_ptr == NULL || batch_size_ptr == NULL)
-        fatalError("Error: invalid pointer(s) pass as argument.");
+        fatalError("Error: invalid pointer(s) pass as argument.");  
 
-    printf("%s", filename);
+    printf("Caminho do arquivo CSV: ");
     if (scanf("%255s", filename_ptr) != 1)
         return;
 
-    printf("%s", batch_size);
+    printf("Numero de imagens por lote: ");
     scanf("%d", batch_size_ptr);
 
     if (mode == DEMO_TRAIN || mode == DEMO_ALL)
@@ -76,13 +71,13 @@ static void getArguments(enum DemoMode mode,
         if (train_size_ptr == NULL || epoch_ptr == NULL || learning_rate_ptr == NULL)
             fatalError("Error: invalid pointer(s) pass as argument.");
 
-        printf("%s", train_size);
+        printf("Quant. de imagens usadas no treinamento: ");
         scanf("%d", train_size_ptr);
 
-        printf("%s", epoch);
+        printf("Numero de epocas de treinamento: ");
         scanf("%d", epoch_ptr);
 
-        printf("%s", learning_rate);
+        printf("Taxa de aprendizado da rede: ");
         scanf("%f", learning_rate_ptr);
     }
 
@@ -91,7 +86,7 @@ static void getArguments(enum DemoMode mode,
         if (test_size_ptr == NULL)
             fatalError("Error: invalid pointer(s) pass as argument.");
 
-        printf("%s", test_size);
+        printf("Quant. de imagens usadas no teste: ");
         scanf("%d", test_size_ptr);
     }
 }
@@ -136,7 +131,21 @@ static void trainDemo(const char *filename,
     NeuralNetModel net = newNeuralNet(batchSize, 4, 128, 784, 10);
     trainingNeuralNetOnImages(&net, trainDataset, batchSize, trainSamples, epochs, learningRate, 0.2f);
 
-    char modelFile[] = "neural_net_cp.bin";
+    char modelFile[256];
+
+    int file_len = 0;
+    char *file_extension = "";
+
+    do
+    {
+        printf("Nome do arquivo para salvar a rede treinada (extensão deve ser .bin): ");
+        scanf("%255s", modelFile);
+
+        file_len = strlen(modelFile);
+        file_extension = getFileExtension(modelFile);
+
+    } while (file_len < 4 || strcmp(file_extension, "bin") != 0);
+
     saveNeuralNet(&net, modelFile);
 
     printf("\nRede treinada salva em: %s\n", modelFile);
@@ -152,7 +161,21 @@ static float testDemo(const char *filename,
 {
     printHeader("TESTE DA REDE NEURAL");
 
-    char modelFile[] = "neural_net_cp.bin";
+    char modelFile[256];
+
+    int file_len = 0;
+    char *file_extension = "";
+
+    do
+    {
+        printf("Arquivo onde rede treinada foi salva (extensão deve ser .bin): ");
+        scanf("%255s", modelFile);
+
+        file_len = strlen(modelFile);
+        file_extension = getFileExtension(modelFile);
+
+    } while (file_len < 4 || strcmp(file_extension, "bin") != 0);
+
     NeuralNetModel loadedNet = loadNeuralNet(modelFile, batchSize);
     Image **testDataset = loadImageDataset(filename, testSamples, startOffset);
 
