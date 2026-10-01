@@ -5,8 +5,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Gera gráficos dinâmicos das métricas da rede neural."
     )
-
-    # Argumentos do terminal
+    
     parser.add_argument(
         "--csv",
         type=str,

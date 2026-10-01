@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <float.h>
+#include <time.h>
 
 /*
  * newNetworkLayer:
@@ -276,6 +277,11 @@ void trainingNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batch_s
     float best_val_loss = best_loss;
     float min_delta = 1e-4f;
 
+    char filename[256];
+    time_t timestamp = time(NULL);
+
+    snprintf(filename, sizeof(filename), "plot/net_metric_%ld.csv", (long)timestamp);
+
     for (int epoch = 0; epoch < epochs; epoch++)
     {
         float loss_dataset = 0.0f;
@@ -310,7 +316,7 @@ void trainingNeuralNetOnImages(NeuralNetModel *net, Image **dataset, int batch_s
 
             printf("==================================================\n");
 
-            saveParametersOnCsv("plot/net_metric.csv", "a", "batch,accuracy,learning_rate", "%d,%.2f,%.2f\n", batch_index++, batch_accuracy * 100.0f, learning_rate);
+            saveParametersOnCsv(filename, "a", "batch,accuracy,learning_rate", "%d,%.2f,%.2f\n", batch_index++, batch_accuracy * 100.0f, learning_rate);
 
             propagateBackward(net, samples, class_labels, learning_rate);
 

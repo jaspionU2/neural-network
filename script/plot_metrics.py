@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
+import time
 
 
 def PlotMetric(csvFile: str, x_param: str, y_param: str):
@@ -48,8 +49,10 @@ def PlotMetric(csvFile: str, x_param: str, y_param: str):
     
     plotDir = os.path.join(currentDir, "plot")
     os.makedirs(plotDir, exist_ok=True)
+    
+    timestamp_now = int(time.time())
 
-    pathSaveFig = os.path.join(plotDir, f"{x_param}_vs_{y_param}.png")
+    pathSaveFig = os.path.join(plotDir, f"{x_param}_vs_{y_param}_{timestamp_now}.png")
     fig.savefig(pathSaveFig, dpi=200)
     plt.close(fig)
 
