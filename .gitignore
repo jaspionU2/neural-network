@@ -4,4 +4,5 @@ __pycache__
 *.bin
 !model_trained_example.bin
 *.png 
-
+*.csv
+!net_metric_ex1790878535.csv

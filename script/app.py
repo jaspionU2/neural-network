@@ -9,7 +9,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--csv",
         type=str,
-        default="plot/net_metric.csv",
+        required=True,
         help="Caminho do arquivo CSV de métricas",
     )
     parser.add_argument(
